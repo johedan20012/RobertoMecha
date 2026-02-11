@@ -1,0 +1,43 @@
+definir girar-izq como{
+	girar.
+	girar.
+	girar.
+}
+
+definir aTope como{
+	mientras frente-libre hacer{
+		avanzar.
+	}
+}
+
+definir mientras-azul-libre como {
+	mientras frente-libre y parado-en-color(azul) hacer{
+		avanzar.
+	}
+}
+
+definir inicio como{
+	avanzar.
+	girar.
+	avanzar.
+	girar-izq.
+	mientras parado-en-color(azul) hacer{
+		mientras-azul-libre.
+		girar.girar.
+		avanzar.
+		pintar(rojo).
+		aTope.
+		girar-izq.
+		avanzar.
+		girar-izq.
+		avanzar.
+		si no parado-en-color(rojo) entonces{
+			pintar(rojo).
+		}sino{
+			pintar(verde).
+		}
+		girar-izq.
+		avanzar.
+		girar.
+	}
+}

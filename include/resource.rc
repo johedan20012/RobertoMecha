@@ -1,0 +1,7 @@
+#include <wx/msw/wx.rc>
+ApplicationIcon ICON "icono.ico"
+ICONPRG ICON "icono.ico"
+Robot RCDATA "robot.png"
+Robot90 RCDATA "robot90.png"
+Robot180 RCDATA "robot180.png"
+Robot270 RCDATA "robot270.png"

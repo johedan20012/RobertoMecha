@@ -1,0 +1,53 @@
+definir girar2 como{
+	repetir 2 veces{
+		girar.
+	}
+}
+
+definir girar3 como{
+	repetir 3 veces{
+		girar.
+	}
+}
+
+definir busqueda como{
+	si parado-en-color(verde) entonces{
+		apagar.
+	}
+	
+	si no parado-en-color(azul) entonces{
+		pintar(azul).
+		
+		si frente-libre entonces{
+			avanzar.
+			busqueda.
+			girar2.
+			avanzar.
+			girar2.
+		}
+
+		si derecha-libre entonces{
+			girar.
+			avanzar.
+			busqueda.
+			girar2.
+			avanzar.
+			girar.
+		}
+
+		si izquierda-libre entonces{
+			girar3.
+			avanzar.
+			busqueda.
+			girar2.
+			avanzar.
+			girar3.
+		}
+
+        pintar(blanco).
+	}
+}
+
+definir inicio como{
+	busqueda.
+}

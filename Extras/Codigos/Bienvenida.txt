@@ -1,0 +1,26 @@
+definir girar2 como{
+	girar.
+	girar.
+}
+
+definir dibujar-7-azules como{
+	repetir 7 veces{
+		pintar(azul).
+		avanzar.
+	}
+	girar2.
+	avanzar.
+	girar2.
+}
+
+definir dibujar-hola como{
+	girar.
+	dibujar-7-azules.
+	
+}
+
+
+
+definir inicio como{
+	
+}

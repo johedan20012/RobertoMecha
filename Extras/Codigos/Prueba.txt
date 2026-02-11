@@ -1,0 +1,39 @@
+definir aTope como{
+	mientras no frente-bloqueado y no parado-en-color(verde) hacer{
+		avanzar.
+	}
+}
+
+definir avanza-libre como{
+		si frente-libre entonces{
+			avanzar.
+		}
+}
+
+definir procedimiento como {
+	repetir 5 veces{
+		pintar(negro).
+		avanza-libre.
+	}
+}
+
+definir procedimiento2 como{
+	repetir 4 veces{
+		pintar(verde).
+		avanza-libre.
+	}
+}
+
+definir inicio como{
+	avanzar.
+	pintar(verde).
+	avanzar.
+	avanzar.
+	avanzar.
+	avanzar.
+	avanzar.
+	procedimiento.
+	girar.
+	girar.
+	aTope.
+}

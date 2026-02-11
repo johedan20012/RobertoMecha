@@ -1,0 +1,28 @@
+definir pintarLinea como{
+	repetir 20 veces {
+		pintar(blanco).
+		avanzar.
+	}
+}
+
+definir aTope como{
+	mientras frente-libre hacer{
+		avanzar.
+	}
+}	
+
+definir pintarCuadrado como{
+	repetir 20 veces{
+		pintarLinea.
+		girar.
+		avanzar.
+		girar.
+		aTope.
+		girar.
+		girar.
+	}
+}
+
+definir inicio como{
+	pintarCuadrado.
+}

@@ -1,0 +1,188 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "cppbuild",
+			"label": "DEBUGCompileCPP",
+			"command": "C:\\Program Files\\mingw-w64\\x86_64-8.1.0-win32-seh-rt_v6-rev0\\mingw64\\bin\\g++.exe",
+			"args": [
+				"-D_REENTRANT",
+				"-D__WINDOWS__",
+				"-D_WINDOWS",
+				"-D__SWI_PROLOG__",
+				"-D__SWI_EMBEDDED__",
+				"-D_UNICODE",
+				"-g",
+				"${workspaceFolder}\\src\\*.cpp",
+				"-o",
+				"${workspaceFolder}\\build\\debug\\programa.exe",
+				"-I",
+				"${workspaceFolder}\\include",
+				"-I",
+				"C:\\wxWidgets\\include",
+				"-I",
+				"C:\\wxWidgets\\lib\\gcc810_x64_dll\\mswud",
+				"-I",
+				"c:\\program files\\swipl\\include",
+				"-L",
+				"c:\\program files\\swipl\\bin",
+				"-L",
+				"C:\\wxWidgets\\lib\\gcc810_x64_dll",
+				"-l",
+				"wxmsw31ud_core",
+				"-l",
+				"wxbase31ud",
+				"-l",
+				"wxscintillad",
+				"-l",
+				"wxmsw31ud_stc",
+				"-l",
+				"swipl"
+			],
+			"options": {
+				"cwd": "C:\\Program Files\\mingw-w64\\x86_64-8.1.0-win32-seh-rt_v6-rev0\\mingw64\\bin"
+			},
+			"problemMatcher": [
+				"$gcc"
+			],
+			"detail": "compiler: \"C:\\Program Files\\mingw-w64\\x86_64-8.1.0-win32-seh-rt_v6-rev0\\mingw64\\bin\\g++.exe\"",
+			"group": {
+				"kind": "test",
+				"isDefault": true
+			},
+		},
+		{
+			"type": "cppbuild",
+			"label": "DEBUGCompilePL",
+			"command": "swipl.exe",
+			"args": [
+				"-f",
+				"none",
+				"-F",
+				"none",
+				"-g",
+				"true",
+				"-t",
+				"\"consult(['../../src/compilador.pl']),qsave_program('pltmp-9052.exe',[goal=version,toplevel=prolog,init_file=none])\""
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/build/debug"
+			}
+		},
+		{
+			"label": "DEBUGCompileAll",
+			"dependsOn": [
+				"DEBUGCompileCPP",
+				"DEBUGCompilePL"
+			],
+			"group": {
+				"kind": "test",
+				"isDefault": true
+			},
+			"problemMatcher": []
+		},
+		{
+			"type": "cppbuild",
+			"label": "ReleaseCompileResources",
+			"command": "windres",
+			"args": [
+				"${workspaceFolder}\\include\\resource.rc",
+				"-I",
+				"C:\\wxWidgets\\include",
+				"-I",
+				"${workspaceFolder}\\resources",
+				"${workspaceFolder}\\build\\release\\recursos.o",
+				
+			],
+		},
+		{
+			"type": "cppbuild",
+			"label": "ReleaseCompileCPP",
+			"command": "C:\\Program Files\\mingw-w64\\x86_64-8.1.0-win32-seh-rt_v6-rev0\\mingw64\\bin\\g++.exe",
+			"args": [
+				"-D_REENTRANT",
+				"-D__WINDOWS__",
+				"-D_WINDOWS",
+				"-D__SWI_PROLOG__",
+				"-D__SWI_EMBEDDED__",
+				"-D_UNICODE",
+				"-static-libstdc++",
+				"-static-libgcc",
+				"${workspaceFolder}\\src\\*.cpp",
+				"${workspaceFolder}\\build\\release\\recursos.o",
+				"-o",
+				"${workspaceFolder}\\build\\release\\RobertoMecha.exe",
+				"-I",
+				"${workspaceFolder}\\include",
+				"-I",
+				"C:\\wxWidgets\\include",
+				"-I",
+				"C:\\wxWidgets\\lib\\gcc810_x64_dll\\mswu",
+				"-I",
+				"c:\\program files\\swipl\\include",
+				"-L",
+				"c:\\program files\\swipl\\bin",
+				"-L",
+				"C:\\wxWidgets\\lib\\gcc810_x64_dll",
+				"-l",
+				"wxmsw31u_core",
+				"-l",
+				"wxbase31u",
+				"-l",
+				"wxscintilla",
+				"-l",
+				"wxmsw31u_stc",
+				"-l",
+				"swipl",
+				"-l:libstdc++.a",
+			],
+			"options": {
+				"cwd": "C:\\Program Files\\mingw-w64\\x86_64-8.1.0-win32-seh-rt_v6-rev0\\mingw64\\bin"
+			},
+			"detail": "compiler: \"C:\\Program Files\\mingw-w64\\x86_64-8.1.0-win32-seh-rt_v6-rev0\\mingw64\\bin\\g++.exe\""
+		},
+		{
+			"type": "cppbuild",
+			"label": "ReleaseCompilePL",
+			"command": "swipl.exe",
+			"args": [
+				"-f",
+				"none",
+				"-F",
+				"none",
+				"-g",
+				"true",
+				"-t",
+				"\"consult(['../../src/compilador.pl']),qsave_program('pltmp-9052.exe',[goal=version,toplevel=prolog,init_file=none])\""
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/build/release"
+			}
+		},
+		{
+			"label": "ReleaseLimpiar",
+			"type": "shell",
+			"windows": {
+				"command": "${workspaceFolder}\\build\\unirTodoRelease.cmd"
+			},
+			"options": {
+				"cwd": "${workspaceFolder}/build"
+			}
+		},
+		{
+			"label": "ReleaseCompileCPPAndResources",
+			"dependsOn": [
+				"ReleaseCompileResources",
+				"ReleaseCompileCPP",
+				"ReleaseCompilePL",
+				"ReleaseLimpiar"
+			],
+			"dependsOrder": "sequence",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"problemMatcher": []
+		},
+	]
+}

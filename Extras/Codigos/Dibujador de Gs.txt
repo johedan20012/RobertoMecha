@@ -1,0 +1,60 @@
+definir oeste como{
+	mientras no orientado-al-oeste hacer{
+		girar.
+	}
+}
+
+definir este como{
+	mientras no orientado-al-este hacer{
+		girar.
+	}
+}
+
+definir pintar4 como{
+	repetir 4 veces{
+		avanzar.
+		pintar(#000000).
+	}
+}
+
+definir g como {
+	pintar(negro).
+	pintar4.
+	girar.
+	avanzar.
+	pintar(negro).
+	avanzar.
+	avanzar.
+	pintar(negro).
+	girar.
+	repetir 2 veces{
+		avanzar.
+		pintar(#000000).
+	}
+	este.
+	repetir 2 veces{
+		avanzar.
+	}
+	girar.
+	repetir 3 veces{
+		avanzar.
+		pintar(negro).
+	}
+	girar.
+	pintar4.
+	girar.
+	repetir 5 veces{
+		avanzar.
+		pintar(negro).
+	}
+	avanzar.
+	girar.
+}
+
+definir inicio como{
+	g.
+	repetir 6 veces{
+		avanzar.
+	}
+	g.
+}

@@ -1,0 +1,131 @@
+Nota: El simulador solo cuenta con 64k de ram virtual para el codigo
+opcode  Nombre  Parametro  Ensamblador     Descripción
+0001  Avanzar    0 bits       AVA        Avanza el robot en la dirección que esta viendo
+0010  Girar      0 bits       GIR        Gira el robot hacia su derecha
+0011  Pintar    24 bits       PIN        Pinta el recuadro donde esta parado el robot con los 24 bits especificando el color en RGB
+0100  SaltoNot  16 bits       BNQ        Pone el contador del programa en la posición especificada en los 16 bits si "Bandera" es 0
+0101  Apagar     0 bits       APA        Detiene la ejecución del programa
+0110  Comparar  27 bits       COM        Compara el registro con número de los primeros 4 bits con el valor de los sisguientes 24 bits y pone bandera en caso correcto 
+0111  SaltoInc  16 bits       JMP        Pone el contador del programa en la posición especificada en los 16 bits de forma incondicional
+1000  SaltoIgu  16 bits       BEQ        Pone el contador del programa en la posición especificada en los 16 bits si "Bandera" es 1
+1001  PonerPila  0 bits       AST        Agrega el número de la instruccion actual +2 y lo mete a la pila
+1010  SacarPila  0 bits       PST        Saca un número de la pila y salta a ese número de instrucción
+1011  CrearVar  16 bits       CVA        Crea una variable en la pila de variables con el valor especificado en los 16 bits
+1100  RestarVar  0 bits       RVA        Resta uno a la variable en la cima de la pila, la elimina y pone la "bandera" a 1 si su valor es 0 o -1
+
+Una branch se escribe como
+    BRN nombre
+
+Entorno del robot  ----------------------
+                   N° de "registro"  
+Frente libre    ->    0x0000
+Derecha libre   ->    0x0001
+Izquierda libre ->    0x0002
+Orientación     ->    0x0003
+Parado en color ->    0x0004
+
+Pila de llamadas   ----------------------
+
+Una pila de enteros de tamaño maximo de 100,000.
+
+Aparte esta la "Bandera" que se pone en 0 o 1 dependiendo de la instruccion comparar
+
+Pila para variables ----------------------
+
+Una pila de enteros para retener las varibles de la estructura de control "repetir" 
+
+programas de ejemplo:
+
+mientras no parado-en-color(rojo) y frente-libre hacer {
+    pintar(azul).
+    avanzar.
+} 
+
+1
+0x640000FF
+0x80000007
+0x60000000
+0x40000007
+0x30FF0000
+0x10000000
+0x70000000
+
+
+repetir 5 veces {
+    avanzar.
+}
+
+1
+0xB0000005
+0x10000000
+0xC0000000
+0x40000002
+
+repetir 5 veces{
+    pintar(verde).
+    avanzar.
+}
+pintar(negro).
+
+1
+0xB0000005
+0x3000FF00
+0x10000000
+0xC0000000
+0x40000002
+0x30000000
+
+repetir 4 veces{
+    repetir 5 veces{
+        pintar(verde).
+        avanzar.
+    }
+    pintar(negro).
+    girar.
+    avanzar.
+}
+
+1
+0xB0000004
+0xB0000005
+0x3000FF00
+0x10000000
+0xC0000000
+0x40000003
+0x30000000
+0x20000000
+0x10000000
+0xC0000000
+0x40000002
+
+pintar(negro).
+avanzar.
+pintar(negro).
+avanzar.
+pintar(negro).
+girar.
+girar.
+avanzar.
+girar.
+repetir 5 veces {
+    avanzar.
+    pintar(negro).
+}
+
+
+1
+0x30000000
+0x10000000
+0x10000000
+0x30000000
+0x20000000
+0x20000000
+0x10000000
+0x20000000
+0xB0000005
+0x10000000
+0x30000000
+0xC0000000
+0x4000000A
+
+

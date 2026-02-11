@@ -1,0 +1,7 @@
+Ejecutar
+
+cat pltmp-9052.exe >> programa.exe
+chmod 777 programa.exe
+rm pltmp-9052.exe
+
+en la carpeta donde se generaron los ejecutables de PROLOG

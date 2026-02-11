@@ -1,0 +1,71 @@
+<programa> -> {<declaración-de-procedimiento>} <declaración-principal> 
+
+<declaración-de-procedimiento> -> "definir" <identificador> "como" "{"
+                                            <expresión>
+                                  "}"
+
+<declaración-principal> -> "definir" "inicio" "como" "{"
+                                <expresión>
+                            "}"
+
+<identificador> -> <letra> { <letra> | <digito> | "_" | "-" }
+
+<letra> -> "a" | "A" | "b" | "B" | ... | "n" | "N" | "o" | "O" | ... | "z" | "Z"
+
+<digito> -> "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" 
+
+<expresión> -> {
+                "apagar." 
+                | "avanzar." 
+                | "girar." 
+                | "pintar" "("<color>")" "." 
+                | <llamada-procedimiento> 
+                | <control-si> 
+                | <control-mientras>
+                | <control-repetir>
+               }
+
+<color> -> "azul" | "rojo" | "verde" | "blanco" | "negro" | "rosa" | "amarillo" | "cafe" | "gris" | "naranja" | "morado" | <color-hexadecimal>
+
+<color-hexadecimal> -> "#" 6*<digito-hexadecimal> 
+
+<digito-hexadecimal> -> <digito> | "A" | "a" 
+                                 | "B" | "b" 
+                                 | "C" | "c" 
+                                 | "D" | "d" 
+                                 | "E" | "e" 
+                                 | "F" | "f" 
+
+<llamada-procedimiento> -> <identificador> "."
+
+<control-si> -> "si" <condición> "entonces" "{"
+                     <expresión>
+                "}" ["sino" "{"
+                    <expresión>
+                "}"]
+
+<control-mientras> -> "mientras" <condición> "hacer" "{"
+                            <expresión>
+                      "}"
+
+<control-repetir> -> "repetir" <numero> "veces" "{
+                            <expresión>
+                     "}"
+
+<condición> ->  <clausula-y> { "o" <clausula-y>}
+
+<clausula-y> -> <clausula-no> { "y" <clausula-no>}
+
+<clausula-no> -> ["no"] <clausula-atomica>
+
+<clausula-atomica> -> "frente-libre"
+                      |"frente-bloqueado"
+                      |"derecha-libre"
+                      |"derecha-bloqueada"
+                      |"izquierda-libre"
+                      |"izquierda-bloqueada"
+                      |"parado-en-color" "("<color>")"
+                      |"orientado-al-norte"
+                      |"orientado-al-sur"
+                      |"orientado-al-este"
+                      |"orientado-al-oeste"

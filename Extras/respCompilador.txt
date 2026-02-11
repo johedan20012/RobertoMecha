@@ -1,0 +1,1006 @@
+/* Este compilador se divide en 3 secciones importantes:
+1.-Analizador lexico(Scanning):
+   En esta sección se divide el codigo en grupos de caracteres llamados
+   tokens, tambien se especifica que tipo de token es cada uno.
+2.Analizador sintactico(Parsing):
+   En esta sección se reciben los tokens de la sección anterior y se
+   construye su arbol de analisis sintactico, en base a las reglas de 
+   sintaxis definidas del lenguaje.
+3.Generador de codigo intermedio('ensamblador'):
+   En esta sección se transforma el arbol de analisis sintactico en una secuencia de 
+   codigos tipo "ensamblador" de una maquina abstracta, el cual servira para la ejecución
+   del codigo.
+4.Traducción de ensamblador a codigo maquina:
+   Esta parte traduce todo la secuencia de codigos "ensamblador" en codigo maquina.
+*/
+
+/* Esta es la parte del scanning */
+escanear(Cadena, Res, Errores):-
+   atom_chars(Cadena, ListCarac),!,
+   tokenizar(Res,Errores,ListCarac,[]).
+
+tokenizar([Token|Tokens],Errores) --> 
+   espacio, 
+   token(Token,Errores1),!, 
+   tokenizar(Tokens,Errores2),
+   {append(Errores1,Errores2,Errores)}.
+
+tokenizar([],[]) --> espacio, [].
+
+espacio --> [Espacio], { code_type(Espacio, space) }, espacio.
+espacio --> [Espacio], { code_type(Espacio, end_of_line)}, espacio.
+espacio --> [].
+
+token(keyword(Token),[]) --> palabraReservada(ListaChar), {atom_chars(Token,ListaChar)}.
+token(nombre(Token),[]) --> palabra2(ListaChar), {atom_chars(Token,ListaChar)}.
+token(numeroHex(Token),[]) --> gatoNumHex(ListaChar), {number_chars(Token,ListaChar)}.
+token(numero(Token),[]) --> numero(ListaChar), {number_chars(Token,ListaChar)}.
+token(especial(Token),[]) --> caractEsp([Token]).
+token('',[['Caracter inesperado',Char]]) --> [Char], {\+code_type(Char, end_of_line)}, {\+code_type(Char, space) }.
+
+palabraReservada(['d','e','f','i','n','i','r']) --> ['d','e','f','i','n','i','r'].
+palabraReservada(['c','o','m','o']) --> ['c','o','m','o'].
+palabraReservada(['h','a','c','e','r']) --> ['h','a','c','e','r'].
+palabraReservada(['r','e','p','e','t','i','r']) --> ['r','e','p','e','t','i','r'].
+palabraReservada(['m','i','e','n','t','r','a','s']) --> ['m','i','e','n','t','r','a','s'].
+palabraReservada(['e','n','t','o','n','c','e','s']) --> ['e','n','t','o','n','c','e','s'].
+palabraReservada(['v','e','c','e','s']) --> ['v','e','c','e','s'].
+palabraReservada(['s','i']) --> ['s','i'].
+palabraReservada(['s','i','n','o']) --> ['s','i','n','o'].
+
+caractEsp([Char]) --> [Char], {Char=')'}.
+caractEsp([Char]) --> [Char], {Char='('}. 
+caractEsp([Char]) --> [Char], {Char='{'}. 
+caractEsp([Char]) --> [Char], {Char='}'}. 
+caractEsp([Char]) --> [Char], {Char='.'}. 
+
+palabra2([Letra|Palabra]) --> letra(Letra), palabra(Palabra).
+palabra2([Letra]) --> letra(Letra). 
+
+palabra([Letra|Palabra]) --> letra(Letra), palabra(Palabra).
+palabra([Digito|Palabra]) --> digito(Digito), palabra(Palabra).
+palabra([Menos|Palabra]) --> [Menos], {Menos='-'}, palabra(Palabra).
+
+palabra([Letra]) --> letra(Letra).
+palabra([Digito]) --> digito(Digito).
+
+letra(Letra) --> [Letra], { code_type(Letra, alpha) }.
+
+numero([Digito|Numero]) --> digito(Digito), numero(Numero).
+numero([Digito]) --> digito(Digito).
+
+gatoNumHex(['0','x'|NumeroHex]) --> gato(_), numeroHex(NumeroHex).
+
+gato(Gato) --> [Gato], {Gato = '#'}.
+
+numeroHex([D1,D2,D3,D4,D5,D6]) -->digitoHex(D1),digitoHex(D2),digitoHex(D3),digitoHex(D4),digitoHex(D5),digitoHex(D6).
+
+digitoHex(Digito) --> digito(Digito).
+digitoHex(Digito) --> [Digito], {Digito='a'}.
+digitoHex(Digito) --> [Digito], {Digito='A'}.
+digitoHex(Digito) --> [Digito], {Digito='b'}.
+digitoHex(Digito) --> [Digito], {Digito='B'}.
+digitoHex(Digito) --> [Digito], {Digito='c'}.
+digitoHex(Digito) --> [Digito], {Digito='C'}.
+digitoHex(Digito) --> [Digito], {Digito='d'}.
+digitoHex(Digito) --> [Digito], {Digito='D'}.
+digitoHex(Digito) --> [Digito], {Digito='e'}.
+digitoHex(Digito) --> [Digito], {Digito='E'}.
+digitoHex(Digito) --> [Digito], {Digito='f'}.
+digitoHex(Digito) --> [Digito], {Digito='F'}.
+
+digito(Digito) --> [Digito], { code_type(Digito, digit) }.
+
+/* Esta es la parte del parsing */
+
+analisisSintactico(Cadena,Res,Errores) :-
+   escanear(Cadena,Tokens,Errores1),!,
+   (Errores1 = [] ->
+      programa(Res,[avanzar,girar,apagar],_,Errores2,Tokens,[]),
+      Errores = Errores2
+   ; Errores = Errores1
+   ).
+   
+funcionDefinida(F,[F|_]).
+funcionDefinida(F,[_|T]) :- funcionDefinida(F,T).
+
+programa(ListDeclProc,LSIn,LSOut,Errores) --> 
+   listDeclProc(ListDeclProc,LSIn,LSOut,Errores1), 
+   ({funcionDefinida(inicio,LSOut)} ; {Errores2 = [['No se definio','inicio']|Errores1]}),
+   ({Errores2=[]} ->
+      {Errores = Errores1}
+   ;  {Errores = Errores2}
+   ).
+
+listDeclProc([DeclProc|ListDeclProc],LSIn,LSOut,Errores) --> 
+   declProc(DeclProc,LSIn,LSOut1,Errores1),
+   listDeclProc(ListDeclProc,LSOut1,LSOut,Errores2),
+   {append(Errores1,Errores2,Errores)}.
+listDeclProc([],LSIn,LSIn,[]) --> [].
+
+declProc(proc(Nombre,ListExpr),LSIn,LSNew,Errores) --> 
+   [keyword('definir')],
+   ([nombre(Nombre)];[_],{Errores1=[['Se esperaba un identificador']]}),
+   ({\+funcionDefinida(Nombre,LSIn)};[_],{Errores1=[['Definicion doble',Nombre]]};{true}), 
+   {LSNew = [Nombre|LSIn]},
+   ([keyword('como')];[_],{Errores1=[['Se esperaba','como']]};{true}),
+   ([especial('{')];[_],{Errores1=[['Se esperaba','{']]};{true}),
+   listaExpresion(ListExpr,LSNew,Errores2),
+   ([especial('}')];[_],{Errores1=[['Se esperaba','}']]};{true}),
+   ({Errores1=[]};{true}),
+   {append(Errores1,Errores2,Errores)}.
+
+listaExpresion([Expresion|Lista],LSIn,Errores) --> 
+   expresion(Expresion,LSIn,Errores1), 
+   listaExpresion(Lista,LSIn,Errores2),
+   {append(Errores1,Errores2,Errores)}.
+listaExpresion([],_,[]) --> [].
+
+expresion(Expresion,LSIn,Errores) --> llamadaFuncion(Expresion,LSIn,Errores).
+%expresion(Expresion,LSIn,Errores) --> controlSi(Expresion,LSIn,Errores).
+%expresion(Expresion,LSIn,Errores) --> controlMientras(Expresion,LSIn,Errores).
+%expresion(Expresion,LSIn,Errores) --> controlRepetir(Expresion,LSIn,Errores).
+
+llamadaFuncion(fun(Nombre),LSIn,Errores) --> 
+   [nombre(Nombre)], 
+   ([especial('.')];[_],{Errores=[['Se esperaba .']]};{true}),
+   ({funcionDefinida(Nombre,LSIn)};[_],{Errores=[['Procedimiento indefinido',Nombre]]};{true}),
+   ({Errores=[]};{true}).
+
+/*llamadaFuncion(fun(pintar,Parametro),_) --> 
+   [nombre('pintar')],
+   [especial('(')],
+   color(Parametro),
+   [especial(')')],
+   [especial('.')].*/
+
+color(Color) --> [numeroHex(Color)].
+color(0x0000FF) --> [nombre('azul')]. 
+color(0xFF0000) --> [nombre('rojo')].
+color(0x00FF00) --> [nombre('verde')].
+color(0xFFFFFF) --> [nombre('blanco')].
+color(0x000000) --> [nombre('negro')].
+color(0xFF00FF) --> [nombre('rosa')].
+color(0xFFFF00) --> [nombre('amarillo')].
+color(0x663300) --> [nombre('cafe')].
+color(0x585F5F) --> [nombre('gris')].
+color(0xFF6600) --> [nombre('naranja')].
+color(0x660066) --> [nombre('morado')].
+
+controlSi(si(Condicion,ListExpr,LisExprElse),LSIn) -->
+   [keyword('si')],
+   condicion(Condicion),
+   [keyword('entonces')],
+   [especial('{')],
+   listaExpresion(ListExpr,LSIn),
+   [especial('}')],
+   elseSi(LisExprElse,LSIn).
+
+elseSi(ListExprElse,LSIn) -->
+   [keyword('sino')],
+   [especial('{')],
+   listaExpresion(ListExprElse,LSIn),
+   [especial('}')].
+
+elseSi([],_) --> [].
+
+controlMientras(mientras(Condicion,ListExpresion),LSIn) -->
+   [keyword('mientras')],
+   condicion(Condicion),
+   [keyword('hacer')],
+   [especial('{')],
+   listaExpresion(ListExpresion,LSIn),
+   [especial('}')].
+
+controlRepetir(repetir(Veces,ListExpresion),LSIn) -->
+   [keyword('repetir')],
+   [numero(Veces)],
+   [keyword('veces')],
+   [especial('{')],
+   listaExpresion(ListExpresion,LSIn),
+   [especial('}')].
+
+condicion([ClausulaY|ClausulasY]) --> clausulaY(ClausulaY),clausulasY(ClausulasY).
+
+clausulasY([ClausulaY|ClausulasY]) --> [nombre('o')],clausulaY(ClausulaY),clausulasY(ClausulasY).
+clausulasY([]) --> [].
+
+clausulaY([ClausulaNo|ClausulasNo]) --> clausulaNo(ClausulaNo),clausulasNo(ClausulasNo).
+
+clausulasNo([ClausulaNo|ClausulasNo]) -->[nombre('y')],clausulaNo(ClausulaNo),clausulasNo(ClausulasNo).
+clausulasNo([]) --> [].
+
+clausulaNo(no(ClausulaAtomica)) --> [nombre('no')], clausulaAtomica(ClausulaAtomica).
+clausulaNo(ClausulaAtomica) --> clausulaAtomica(ClausulaAtomica).
+
+clausulaAtomica('fl') --> [nombre('frente-libre')].
+clausulaAtomica('fb') --> [nombre('frente-bloqueado')].
+clausulaAtomica('dl') --> [nombre('derecha-libre')].
+clausulaAtomica('db') --> [nombre('derecha-bloqueada')].
+clausulaAtomica('il') --> [nombre('izquierda-libre')].
+clausulaAtomica('ib') --> [nombre('izquierda-bloqueada')].
+clausulaAtomica('on') --> [nombre('orientado-al-norte')].
+clausulaAtomica('os') --> [nombre('orientado-al-sur')].
+clausulaAtomica('oe') --> [nombre('orientado-al-este')].
+clausulaAtomica('oo') --> [nombre('orientado-al-oeste')].
+clausulaAtomica(consul(pc,Parametro)) --> 
+   [nombre('parado-en-color')],
+   [especial('(')],
+   color(Parametro),
+   [especial(')')].
+
+/*
+Esta es la parte de generación de codigo "ensamblador"
+
+Esta parte recibe un parse tree de la parte de parsing y genera 
+una lista con comandos tipo "ensamblador" para la maquina abstracta
+*/
+
+generarEnsamblador(Cadena,[['JMP','Finicio']|Res],Errores) :-
+   analisisSintactico(Cadena,Res1,Errores1),!,
+   (Errores1 = [] ->
+      traducir_Listproc(Res1,Res,[0,0,0],_)
+   ; Errores = Errores1
+   ).
+
+traducir_Listproc([Proc|ListProc],Res,CIn,COut) :-
+   traducir_Proc(Proc,Res1,CIn,COut1),
+   traducir_Listproc(ListProc,Res2,COut1,COut),
+   append(Res1,Res2,Res).
+   
+traducir_Listproc([],[],CIn,CIn).
+
+traducir_Proc(proc(Nombre,ListExpresion),[['BRN',NombreBranch]|Res],CIn,COut) :-
+   atom_concat('F', Nombre, NombreBranch),
+   traducir_listExpresion(ListExpresion,Res1,CIn,COut),
+   traducir_finalDeProc(NombreBranch,InstruccionFinal),
+   append(Res1,[InstruccionFinal],Res).
+
+traducir_finalDeProc('Finicio',['APA']). 
+traducir_finalDeProc(_,['PST']).
+
+traducir_listExpresion([Expresion|ListExpresion],Res,CIn,COut) :-
+   traducir_expresion(Expresion,Res1,CIn,COut1),
+   traducir_listExpresion(ListExpresion,Res2,COut1,COut),
+   append(Res1,Res2,Res).
+traducir_listExpresion([],[],CIn,CIn).
+
+traducir_expresion(Expresion,Res,CIn,CIn) :-
+   traducir_funcion(Expresion,Res).
+traducir_expresion(Expresion,Res,CIn,COut):-
+   traducir_controlSi(Expresion,Res,CIn,COut).
+traducir_expresion(Expresion,Res,CIn,COut):-
+   traducir_controlMientras(Expresion,Res,CIn,COut).
+traducir_expresion(Expresion,Res,CIn,COut):-
+   traducir_controlRepetir(Expresion,Res,CIn,COut).
+
+traducir_funcion(fun(avanzar),[['AVA']]).
+traducir_funcion(fun(girar),[['GIR']]).
+traducir_funcion(fun(apagar),[['APA']]).
+traducir_funcion(fun(pintar,Color),[['PIN',Color]]).
+traducir_funcion(fun(Nombre),[['AST'],['JMP',NombreBranch]]):- atom_concat('F', Nombre, NombreBranch).
+
+traducir_controlSi(si(Condicion,ListExpresion,ListExpresionElse),Res,[CIf|CT],COut):-
+   atom_concat('IFExp',CIf,BranchExp),
+   atom_concat('IFElse',CIf,BranchElse),
+   atom_concat('IFSal',CIf,BranchSal),
+   CIfNew is CIf+1,
+   traducir_condicion(Condicion,Res1,BranchExp,[CIfNew|CT],COut1),
+   traducir_listExpresion(ListExpresion,Res2,COut1,COut2),
+   traducir_listExpresion(ListExpresionElse,Res3,COut2,COut),
+   append(Res1,[['JMP',BranchElse],['BRN',BranchExp]|Res2],Res4),
+   append(Res4,[['JMP',BranchSal],['BRN',BranchElse]|Res3],Res5),
+   append(Res5,[['BRN',BranchSal]],Res).
+
+traducir_controlMientras(mientras(Condicion,ListExpr),[['BRN',BranchCond]|Res],[CIf,CCond,CMi],COut):-
+   atom_concat('WhileCond',CMi,BranchCond),
+   atom_concat('WhileExp',CMi,BranchExp),
+   atom_concat('WhileSal',CMi,BranchSal),
+   CMiNew is CMi+1,
+   traducir_condicion(Condicion,Res1,BranchExp,[CIf,CCond,CMiNew],COut1),
+   traducir_listExpresion(ListExpr,Res2,COut1,COut),
+   append(Res1,[['JMP',BranchSal],['BRN',BranchExp]|Res2],Res3),
+   append(Res3,[['JMP',BranchCond],['BRN',BranchSal]],Res).
+
+traducir_controlRepetir(repetir(Veces,ListExpr),[['CVA',Veces],['BRN',BranchRep]|Res],[CIf,CCond,CMi],COut):-
+   atom_concat('ForRep',CMi,BranchRep),
+   CMiNew is CMi+1,
+   traducir_listExpresion(ListExpr,Res1,[CIf,CCond,CMiNew],COut),
+   append(Res1,[['RVA'],['BNQ',BranchRep]],Res).
+
+traducir_condicion(Condicion,Res,BranchExp,CIn,COut):-
+   traducir_clausulasY(Condicion,Res,BranchExp,CIn,COut).
+ 
+traducir_clausulasY([ClausulaY|ClausulasY],Res,BranchExp,[CIf,CCond|CT],COut):-
+   CCondNew is CCond+1,
+   atom_concat('Cond',CCond,BranchCond),
+   traducir_clausulaY(ClausulaY,Res1,BranchCond),
+   traducir_clausulasY(ClausulasY,Res2,BranchExp,[CIf,CCondNew|CT],COut),
+   append(Res1,[['JMP',BranchExp],['BRN',BranchCond]|Res2],Res).
+traducir_clausulasY([],[],_,CIn,CIn).
+
+traducir_clausulaY(ClausulaY,Res,BranchCond):-
+   traducir_clausulasNo(ClausulaY,Res,BranchCond).
+
+traducir_clausulasNo([ClausulaNo|ClausulasNo],Res,BranchCond):-
+   traducir_clausulaNo(ClausulaNo,Res1,BranchCond),
+   traducir_clausulasNo(ClausulasNo,Res2,BranchCond),
+   append(Res1,Res2,Res).
+traducir_clausulasNo([],[],_).
+
+traducir_clausulaNo(no(ClausulaAtomica),[Res,['BEQ',BranchCond]],BranchCond):-
+   traducir_clausulaAtomica(ClausulaAtomica,Res).
+traducir_clausulaNo(ClausulaAtomica,[Res,['BNQ',BranchCond]],BranchCond):-
+   traducir_clausulaAtomica(ClausulaAtomica,Res).
+
+traducir_clausulaAtomica('fl',['CMP',0,1]).
+traducir_clausulaAtomica('fb',['CMP',0,0]).
+traducir_clausulaAtomica('dl',['CMP',1,1]).
+traducir_clausulaAtomica('db',['CMP',1,0]).
+traducir_clausulaAtomica('il',['CMP',2,1]).
+traducir_clausulaAtomica('ib',['CMP',2,0]).
+traducir_clausulaAtomica('on',['CMP',3,1]).
+traducir_clausulaAtomica('os',['CMP',3,4]).
+traducir_clausulaAtomica('oe',['CMP',3,2]).
+traducir_clausulaAtomica('oo',['CMP',3,8]).
+traducir_clausulaAtomica(consul(pc,Color),['CMP',4,Color]).
+
+/* Ultima fase del compilador 
+   Esta parte traduce el codigo "ensamblador" en lenguaje
+   maquina
+*/
+
+compilar(Cadena,Res,Tam,Errores) :-
+   generarEnsamblador(Cadena,CodigoEn,Errores1),
+   (Errores1 = [] ->
+      obtenerPosDeBranchs(CodigoEn,0,CodigoBranchFree,ListPos),
+      ensamblar(CodigoBranchFree,ListPos,Res,Tam)
+   ; Errores = Errores1
+   ).
+   
+
+obtenerPosDeBranchs([['BRN',Nombre]|T],Cont,Res,[[Nombre,Cont]|ListPos]):-
+   obtenerPosDeBranchs(T,Cont,Res,ListPos).
+
+obtenerPosDeBranchs([H|T],Cont,[H|Res],ListPos):-
+   Cont2 is Cont+1,
+   obtenerPosDeBranchs(T,Cont2,Res,ListPos).
+
+obtenerPosDeBranchs([],_,[],[]).
+
+obtenerPosDeBranch(Nombre,[[Nombre,Pos]|_],Pos).
+obtenerPosDeBranch(Nombre,[_|T],Res) :-
+   obtenerPosDeBranch(Nombre,T,Res).
+obtenerPosDeBranch(_,[],0).
+
+ensamblar([Ins|T],ListPos,[InsEnsa|Res],NTam):-
+   ensamblarIns(Ins,InsEnsa,ListPos),
+   ensamblar(T,ListPos,Res,Tam),
+   NTam is Tam +1.
+ensamblar([],_,[],0).
+
+ensamblarIns(['AVA'],134217728,_).
+ensamblarIns(['GIR'],268435456,_).
+ensamblarIns(['PIN',Color],Code,_):-
+   Code is 402653184 + Color.
+ensamblarIns(['BNQ',Branch],Code,ListPos):-
+   obtenerPosDeBranch(Branch,ListPos,PosBranch),
+   Code is 536870912 + PosBranch.
+ensamblarIns(['APA'],671088640,_).
+ensamblarIns(['CMP',N1,N2],Code,_):-
+   Code is 805306368 + (N1<<24) + N2.
+ensamblarIns(['JMP',Branch],Code,ListPos):-
+   obtenerPosDeBranch(Branch,ListPos,PosBranch),
+   Code is 939524096 + PosBranch.
+ensamblarIns(['BEQ',Branch],Code,ListPos):-
+   obtenerPosDeBranch(Branch,ListPos,PosBranch),
+   Code is 1073741824 + PosBranch.
+ensamblarIns(['AST'],1207959552,_).
+ensamblarIns(['PST'],1342177280,_).
+ensamblarIns(['CVA',Valor],Code,_):-
+   Code is 1476395008 + Valor.
+ensamblarIns(['RVA'],1610612736,_).
+
+
+
+prueba(X,Y,Error) :- 
+   prueba2(X,Y,Error),
+   (Error = [] -> 
+      write("GG")
+   ;  write("NO GG")
+   ).
+
+prueba2(X,Y,Error) :-
+   prueba3(X,Y,Error).
+
+prueba3(X,Y,Error) :- 
+   (X==1, Error1 =[] ; Error1 = ['Fallo prueba3a']), 
+   (Y==2; Error = ['Fallo prueba3b'|Error1]).
+
+
+
+
+
+/* RESPALDO DE FRAME.CPP*/
+#include "frame.h"
+
+MyFrame::MyFrame()
+    : wxFrame(NULL, wxID_ANY, "Robot sin nombre")
+{
+    wxTopLevelWindow::Maximize(true);
+    wxImage::AddHandler(new wxPNGHandler);
+
+    //"Robot sin nombre"L"( ͡° ͜ʖ ͡°)"
+    //mComunicadorPROLOG = new prologCom(cadena);
+
+    wxMenu *menuProyecto = new wxMenu;
+    menuProyecto->Append(wxID_Proyecto, "Compilar", "Compilar programa");
+    menuProyecto->Append(wxID_ProyectoE, "Ejecutar", "Ejecutar codigo maquina");
+    wxMenu *menuDebug = new wxMenu;
+    menuDebug->Append(wxID_Debug, "Avanzar",L"Avanza el robot una casilla en la direcci\u00F3n que esta viendo");
+    menuDebug->Append(wxID_DebugG, "Girar",L"Gira el robot hacia la derecha");
+    menuDebug->Append(wxID_DebugC, "Consultar estado",L"Consulta el estado actual del robot");
+    wxMenu *menuFile = new wxMenu;
+    /*menuFile->Append(ID_Hello, "&Hello...\tCtrl-H",
+                     "Help string shown in status bar for this menu item");
+    menuFile->AppendSeparator();*/
+    menuFile->Append(wxID_EXIT, "Salir", "Salir del programa");
+    wxMenu *menuHelp = new wxMenu;
+    menuHelp->Append(wxID_ABOUT, "Acerca de ...", L"Informaci\u00F3n acerca del programa");
+    wxMenuBar *menuBar = new wxMenuBar;
+
+    menuBar->Append(menuFile, "&Archivo");
+    menuBar->Append(menuProyecto, "&Proyecto");
+    menuBar->Append(menuDebug, "&DEBUG");
+    menuBar->Append(menuHelp, "&Ayuda");
+    SetMenuBar( menuBar );
+    CreateStatusBar();
+    SetStatusText("Proyecto de PLP");
+    Bind(wxEVT_MENU, &MyFrame::OnHello, this, ID_Hello);
+    Bind(wxEVT_MENU, &MyFrame::OnCompile, this, wxID_Proyecto);
+    Bind(wxEVT_MENU, &MyFrame::OnEjecutar, this, wxID_ProyectoE);
+    Bind(wxEVT_MENU, &MyFrame::OnAvanzar, this, wxID_Debug);
+    Bind(wxEVT_MENU, &MyFrame::OnGirar, this, wxID_DebugG);
+    Bind(wxEVT_MENU, &MyFrame::OnEstado, this, wxID_DebugC);
+    Bind(wxEVT_MENU, &MyFrame::OnAbout, this, wxID_ABOUT);
+    Bind(wxEVT_MENU, &MyFrame::OnExit, this, wxID_EXIT);
+
+
+    wxBoxSizer* topsizer = new wxBoxSizer( wxHORIZONTAL );
+    
+    //mCodigo = new wxTextCtrl(this, TEXT_Main, "",wxDefaultPosition, wxSize(100,150),wxTE_MULTILINE | wxTE_RICH | wxHSCROLL);
+    mCodigo = new wxStyledTextCtrl(this, TEXT_Main, wxDefaultPosition, wxSize(100,150),wxTE_MULTILINE | wxTE_RICH | wxHSCROLL , wxTextCtrlNameStr);
+    mCodigo->SetMarginType(0,wxSTC_MARGIN_NUMBER);
+    mCodigo->SetMarginWidth(0,30);
+    mCodigo->SetMarginWidth(1,0);
+    mCodigo->SetMarginWidth(2,0);
+    mCodigo->SetScrollWidth(100);
+    //mCodigo->SetLexer(wxSTC_LEX_CONTAINER);
+    //mCodigo->Bind(wxEVT_STC_STYLENEEDED, &MyFrame::OnStyleNeeded, this);
+    mCodigo->StyleSetFontAttr(0,12,"",false,false,false);
+    mMapa = new Mundo(this);//new wxPanel(this, Panel_Main, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL, wxPanelNameStr);
+    topsizer->Add(mCodigo,1,wxEXPAND|wxALL, 0);
+    topsizer->Add(mMapa,2,wxEXPAND|wxALL,0);
+
+    SetSizer( topsizer );      // use the sizer for layout
+
+    topsizer->SetSizeHints( this );   // set size hints to honour minimum size
+}
+
+void MyFrame::iniciarComunicado(char* argv0){
+    mComunicadorPROLOG = new prologCom(argv0);
+}
+
+void MyFrame::OnExit(wxCommandEvent& event)
+{
+    delete mComunicadorPROLOG;
+    Close(true);
+}
+void MyFrame::OnAbout(wxCommandEvent& event)
+{
+
+    //wxMessageBox(mComunicadorPROLOG->consultarHappy());
+    wxMessageBox(L"Proyecto para la materia de principios de lenguajes de programaci\u00F3n por el alumno Luis Kevin Johedan Ram\u00EDrez Fuentes",
+                 "Acerca de robot sin nombre", wxOK | wxICON_INFORMATION);
+}
+void MyFrame::OnHello(wxCommandEvent& event)
+{
+    wxLogMessage("Hello world from wxWidgets!");
+}
+
+void MyFrame::OnCompile(wxCommandEvent& event){
+    /*
+    wxString codigo = "";
+    for(int i=0; i<mCodigo->GetNumberOfLines(); i++){
+        codigo += "\n"+mCodigo->GetLineText(i);
+    }
+    wchar_t* codigoWCHAR= codigo.wchar_str();
+    int* codigos = nullptr;
+    int tamCodigos = 0;
+    if(!mComunicadorPROLOG->Escanear(codigoWCHAR,&codigos,&tamCodigos)){
+        wxMessageBox("Error al compilar =(","Resultado de consulta", wxOK | wxICON_INFORMATION);
+        return;
+    }
+    
+    wxMessageBox("Programa compilado con exito","Resultado de consulta", wxOK | wxICON_INFORMATION);
+
+
+    std::cout<<"tam:"<<tamCodigos<<"\n";
+    for(int i=0; i<tamCodigos; i++){
+        
+    } */
+    
+    //wxMessageBox(mComunicadorPROLOG->Escanear(codigoWCHAR),"Resultado de consulta", wxOK | wxICON_INFORMATION);
+}
+
+void MyFrame::OnEjecutar(wxCommandEvent& event){
+    wxString codigo = mCodigo->GetText();
+    /*for(int i=0; i<mCodigo->GetNumberOfLines(); i++){
+        codigo += "\n"+mCodigo->GetLineText(i);
+        //std::wcout<<"\n"<<mCodigo->GetLineText(i);   
+    }*/
+    std::string codigoChido = codigo.ToStdString();
+    //wchar_t* codigoWCHAR= codigo.wchar_str();
+    int* codigos = nullptr;
+    int tamCodigos = 0;
+    char* errores = nullptr;
+    if(!mComunicadorPROLOG->Escanear(codigoChido.c_str(),&codigos,&tamCodigos,&errores)){
+        if(errores!=nullptr){
+            wxMessageBox(errores,"Resultado de consulta", wxOK | wxICON_ERROR);
+        }else{
+            wxMessageBox("Error de sintaxis","Resultado de consulta", wxOK | wxICON_ERROR);
+        }
+        return;
+    }
+    mMapa->ReiniciarTodo();
+    wxMessageBox("Programa compilado con exito","Resultado de consulta", wxOK | wxICON_INFORMATION);
+
+    std::stack<int> callStack;
+    std::stack<unsigned int> varStack;
+    unsigned int contadorPrograma =0;
+    bool bandera = false;
+
+    while(contadorPrograma <tamCodigos){
+        //Sleep(500);
+        unsigned int nuevoContador = contadorPrograma+1;
+        unsigned int opcode = (codigos[contadorPrograma] & MASKOPCODE) >> 27;
+        unsigned int argumento1 = (codigos[contadorPrograma] & MASKARG1)>>24;
+        unsigned int argumento2 = (codigos[contadorPrograma] & MASKARG2);
+        std::cout<<"Num:"<<contadorPrograma<<" op-"<<opcode<<" arg1-"<<argumento1<<" arg2-"<<argumento2<<" lol:"<<codigos[contadorPrograma]<<"\n";
+        switch (opcode){
+            case 1:
+                mMapa->AvanzarRobot();
+                break;
+            
+            case 2:
+                mMapa->GirarRobot();
+                break;
+
+            {case 3:
+                long int color2 = (argumento2&MASKGREEN) | ((argumento2&MASKRED)>>16) | ((argumento2&MASKBLUE)<<16);
+                mMapa->Pintar(color2);
+                break;}
+            case 4:
+                if(!bandera)nuevoContador = argumento2;
+                break;
+            case 5:
+                nuevoContador = tamCodigos;
+                break;
+            case 6:
+                switch (argumento1){
+                    case 0:
+                        bandera = mMapa->FrenteLibre();   
+                        if(argumento2==0){
+                            bandera = !bandera;
+                        } 
+                        break;
+                    case 1:
+                        bandera = mMapa->DerechaLibre();
+                        if(argumento2==0){
+                            bandera = !bandera;
+                        }
+                        break;
+                    case 2:
+                        bandera = mMapa->IzquierdaLibre();
+                        if(argumento2==0){
+                            bandera = !bandera;
+                        }
+                        break;
+                    case 3:
+                        bandera = (argumento2 == mMapa->OrientacionActual());
+                        break;
+                    case 4:
+                        long int color,color2 = (argumento2&MASKGREEN) | ((argumento2&MASKRED)>>16) | ((argumento2&MASKBLUE)<<16);
+                        if(mMapa->ParadoEnColor(&color)){
+                            bandera = (color2 == color);
+                        }else{
+                            bandera = false;
+                        }
+                        break;
+                }
+                break;
+            case 7:
+                nuevoContador = argumento2;
+                break;
+            case 8:
+                if(bandera)nuevoContador = argumento2;
+                break;
+            case 9:
+                callStack.push(contadorPrograma+2);
+                break;
+            case 10:
+                nuevoContador = callStack.top();
+                callStack.pop();
+                break;
+            case 11:
+                varStack.push(argumento2);
+                break;
+            {case 12:
+                unsigned int aux = varStack.top();
+                varStack.pop();
+                aux--;
+                if(aux==0){
+                    bandera = true;
+                }else{
+                    varStack.push(aux);
+                }
+                break;
+            }
+        }
+        if(opcode != 6 && opcode != 12)bandera = false;
+        contadorPrograma = nuevoContador;
+        wxYield();
+    }
+    std::cout<<"Termino la ejecucion"<<"---------\n";
+    
+}
+
+void MyFrame::OnAvanzar(wxCommandEvent& event){
+    mMapa->AvanzarRobot();
+}
+
+void MyFrame::OnGirar(wxCommandEvent& event){
+    mMapa->GirarRobot();
+}
+
+void MyFrame::OnEstado(wxCommandEvent& event){
+    long int color = -1;
+    mMapa->ParadoEnColor(&color);
+    std::cout<<"Estado FL:"<<mMapa->FrenteLibre()<<" DL:"<<mMapa->DerechaLibre()<<" IL:"<<mMapa->IzquierdaLibre()<<" ParadoEnColor:"<<color<<"\n";
+}
+
+
+
+/* Respaldo mundo.cpp */
+
+#include "mundo.h"
+
+BEGIN_EVENT_TABLE(Mundo, wxPanel)
+// some useful events
+/*
+ EVT_MOTION(BasicDrawPane::mouseMoved)
+ EVT_LEFT_DOWN(BasicDrawPane::mouseDown)
+ EVT_LEFT_UP(BasicDrawPane::mouseReleased)
+ EVT_RIGHT_DOWN(BasicDrawPane::rightClick)
+ EVT_LEAVE_WINDOW(BasicDrawPane::mouseLeftWindow)
+ EVT_KEY_DOWN(BasicDrawPane::keyPressed)
+ EVT_KEY_UP(BasicDrawPane::keyReleased)
+ EVT_MOUSEWHEEL(BasicDrawPane::mouseWheelMoved)
+ */
+
+// catch paint events
+EVT_PAINT(Mundo::paintEvent)
+
+END_EVENT_TABLE()
+
+/* Representación de la dirección de la pared como entero */
+/*
+    1 --> Arriba
+    2 --> Derecha
+    4 --> Abajo
+    8 --> Izquierda
+*/
+
+Mundo::Mundo(wxFrame* parent) : wxPanel(parent) {
+    mRobot = new wxBitmap;
+    if(!mRobot->LoadFile("assets/robot.png", wxBITMAP_TYPE_PNG)){
+        std::cout<<"Error al cargar la imagen del robot =(";
+        delete mRobot;
+        mRobot = NULL;
+    }
+    mRobot9 = new wxBitmap;
+    if(!mRobot9->LoadFile("assets/robot90.png", wxBITMAP_TYPE_PNG)){
+        std::cout<<"Error al cargar la imagen del robot =(";
+        delete mRobot9;
+        mRobot9 = NULL;
+    }
+    mRobot18 = new wxBitmap;
+    if(!mRobot18->LoadFile("assets/robot180.png", wxBITMAP_TYPE_PNG)){
+        std::cout<<"Error al cargar la imagen del robot =(";
+        delete mRobot18;
+        mRobot18 = NULL;
+    }
+    mRobot27 = new wxBitmap;
+    if(!mRobot27->LoadFile("assets/robot270.png", wxBITMAP_TYPE_PNG)){
+        std::cout<<"Error al cargar la imagen del robot =(";
+        delete mRobot27;
+        mRobot27 = NULL;
+    }
+
+    mPosRobot.x=0;
+    mPosRobot.y=0;
+    mDirRobot.x=1;
+    mDirRobot.y=0;
+
+    for(int i = 0; i<100; i++){
+        mParedes[i][0] = 1;
+        mParedes[99][i] = 2;
+        mParedes[i][99] = 4;
+        mParedes[0][i] = 8;
+        mParedes2[i][0] = 1;
+        mParedes2[99][i] = 2;
+        mParedes2[i][99] = 4;
+        mParedes2[0][i] = 8;
+    }
+    mParedes[0][0] = 9;
+    mParedes[99][0] = 3;
+    mParedes[0][99] = 12;
+    mParedes[99][99] = 6;
+    mParedes2[0][0] = 9;
+    mParedes2[99][0] = 3;
+    mParedes2[0][99] = 12;
+    mParedes2[99][99] = 6;
+
+    for(int i=0; i<20; i++){
+        mParedes[19][i] |= 2;
+        mParedes[20][i] |= 8;
+        mParedes[i][19] |= 4;
+        mParedes[i][20] |= 1;
+    }
+    mParedes[9][9] |=  1044480 | DIBUJAR;
+    /*mParedes[0][0] |= 2;
+    mParedes[1][0] |= 8 | 1044480 | DIBUJAR;
+    mParedes[2][0] |= 2;
+    mParedes[3][0] |= 10;
+    mParedes[4][0] |= 8;
+    mParedes[0][1] |= 4;
+    mParedes[1][1] |= 2;
+    mParedes[2][1] |= 8;
+    mParedes[3][1] |= 6;
+    mParedes[4][1] |= 8;
+    mParedes[0][2] |= 1;
+    mParedes[1][2] |= 6;
+    mParedes[2][2] |= 10;
+    mParedes[3][2] |= 9;
+    mParedes[4][2] |= 4;
+    mParedes[0][3] |= 2;
+    mParedes[1][3] |= 9;
+    mParedes[2][3] |= 0;
+    mParedes[3][3] |= 4;
+    mParedes[4][3] |= 1;
+    mParedes[0][4] |= 0;
+    mParedes[1][4] |= 2;
+    mParedes[2][4] |= 8;
+    mParedes[3][4] |= 3;
+    mParedes[4][4] |= 8;*/
+
+    mCamara[0].x = 1;
+    mCamara[0].y = 1;
+    mCamara[1].x = 28;
+    mCamara[1].y = 23;
+}
+
+void Mundo::ReiniciarTodo(){
+    for(int i = 0; i<100; i++){
+        for(int j = 0; j<100; j++){
+            mParedes2[i][j] = mParedes[i][j];
+        }
+    }
+    mPosRobot.x=0;
+    mPosRobot.y=0;
+    mDirRobot.x=1;
+    mDirRobot.y=0;
+    paintNow();
+}
+
+/*
+ * Called by the system of by wxWidgets when the panel needs
+ * to be redrawn. You can also trigger this call by
+ * calling Refresh()/Update().
+ */
+
+void Mundo::paintEvent(wxPaintEvent & evt)
+{
+    wxPaintDC dc(this);
+    render(dc);
+}
+
+/*
+ * Alternatively, you can use a clientDC to paint on the panel
+ * at any time. Using this generally does not free you from
+ * catching paint events, since it is possible that e.g. the window
+ * manager throws away your drawing when the window comes to the
+ * background, and expects you will redraw it when the window comes
+ * back (by sending a paint event).
+ *
+ * In most cases, this will not be needed at all; simply handling
+ * paint events and calling Refresh() when a refresh is needed
+ * will do the job.
+ */
+void Mundo::paintNow()
+{
+    wxClientDC dc(this);
+    render(dc);
+}
+
+/*
+ * Here we do the actual rendering. I put it in a separate
+ * method so that it can work no matter what type of DC
+ * (e.g. wxPaintDC or wxClientDC) is used.
+ */
+void Mundo::render(wxDC&  dc){
+    int ancho,largo;
+    GetSize(&ancho,&largo);
+    std::cout <<"An: "<<ancho<<" La: "<<largo<<"\n";
+    /* Calcular camara */
+    int cubosAncho = (ancho/30), cubosLargo = (largo/30);
+    unsigned int offsetX = 0, offsetY = 0;
+    if(mPosRobot.x >= cubosAncho){
+        offsetX = (((mPosRobot.x-cubosAncho) / 4 )+1)*5;
+    }
+    if(mPosRobot.y >= cubosLargo){
+        offsetY = (((mPosRobot.y-cubosLargo) / 4 )+1)*5;
+    }
+
+    dc.Clear(); //Limpia el dispositivo en contexto con la brocha de fondo actual
+
+    for(int a=1; a<=cubosLargo; a++){
+        dc.DrawText(wxString::Format(wxT("%i"),a+offsetY),12,(a*30)+8);
+    }
+
+    for(int a=1; a<=cubosAncho; a++){
+        dc.DrawText(wxString::Format(wxT("%i"),a+offsetX),(a*30)+8,15);
+    }
+
+    dc.DrawLine( 0, 30, ancho, 30); 
+    dc.DrawLine( 30, 0, 30, largo); 
+
+    wxBrush brocha;
+    long int mascara = 268435440,mascara2 = 268435456;
+    dc.SetPen(wxNullPen); // 0-pixels-thick red outline
+    
+    for(int i=0; i<cubosLargo; i++){
+        for(int j=0; j<cubosAncho; j++){
+            int aux = (i+1)*30,aux1=(j+1)*30;
+            
+            if(mParedes2[i+offsetX][j+offsetY]&mascara2){
+                long int color = (mParedes2[i+offsetX][j+offsetY]&mascara)>>4;
+                brocha.SetColour(wxColour(color));
+                dc.SetBrush(brocha);
+                dc.DrawRectangle( aux+4, aux1+4, 22, 22);
+            }
+            if(mParedes2[i+offsetX][j+offsetY] & 2){
+                dc.DrawLine(aux+30,aux1,aux+30,aux1+30);
+            }
+            if(mParedes2[i+offsetX][j+offsetY] & 4){
+                dc.DrawLine(aux,aux1+30,aux+30,aux1+30);
+            }
+        }
+    }
+
+    dc.SetBrush(*wxBLACK_BRUSH);
+    for(int i = 1; i<=cubosAncho; i++){
+        for(int j=1; j<=cubosLargo; j++){
+            dc.DrawCircle(i*30,j*30,3);
+        }
+    }
+    if(mRobot!=NULL){
+    wxBitmap* correcto = mRobot;
+    switch (Orientacion(mDirRobot)){
+        case 1:
+            correcto = mRobot27;
+            break;
+        
+        case 4:
+            correcto = mRobot9;
+            break;
+
+        case 8:
+            correcto = mRobot18;
+            break;
+    }
+    dc.DrawBitmap(*correcto,((mPosRobot.x%cubosAncho)*30)+32,((mPosRobot.y%cubosLargo)*30)+32,true);
+    }
+}
+
+void Mundo::AvanzarRobot(){
+    if(!FrenteLibre()){
+        wxMessageBox("Choque con una pared =(","Resultado de consulta", wxOK | wxICON_INFORMATION);
+        paintNow();
+        return;
+    }
+    mPosRobot += mDirRobot;
+    paintNow();
+}
+
+void Mundo::GirarRobot(){
+    mDirRobot = RotarDireccion(mDirRobot);
+    paintNow();
+}
+
+wxPoint Mundo::RotarDireccion(wxPoint pDir){
+    wxPoint regreso = pDir;
+    if(regreso.x==1){
+        regreso.x =0;
+        regreso.y =1;
+    }else if(regreso.y==1){
+        regreso.x =-1;
+        regreso.y =0;
+    }else if(regreso.x==-1){
+        regreso.x =0;
+        regreso.y =-1;
+    }else{
+        regreso.x =1;
+        regreso.y =0;
+    }
+    return regreso;
+}
+
+wxPoint Mundo::RotarDireccionIzq(wxPoint pDir){
+    wxPoint regreso = pDir;
+    if(regreso.x==1){
+        regreso.x =0;
+        regreso.y =-1;
+    }else if(regreso.y==1){
+        regreso.x =1;
+        regreso.y =0;
+    }else if(regreso.x==-1){
+        regreso.x =0;
+        regreso.y =1;
+    }else{
+        regreso.x =-1;
+        regreso.y =0;
+    }
+    return regreso;
+}
+
+bool Mundo::FrenteLibre(){
+    return !(mParedes2[mPosRobot.x][mPosRobot.y]&Orientacion(mDirRobot));
+}
+
+bool Mundo::DerechaLibre(){
+    return !(mParedes2[mPosRobot.x][mPosRobot.y]&Orientacion(RotarDireccion(mDirRobot)));
+}
+
+bool Mundo::IzquierdaLibre(){
+    return !(mParedes2[mPosRobot.x][mPosRobot.y]&Orientacion(RotarDireccionIzq(mDirRobot)));
+}
+
+void Mundo::Pintar(long int pColor){
+    mParedes2[mPosRobot.x][mPosRobot.y] &= MASKPAREDES;
+    mParedes2[mPosRobot.x][mPosRobot.y] |= (pColor << 4) | DIBUJAR;
+    paintNow();
+}
+
+bool Mundo::ParadoEnColor(long int* pColor){
+    if(mParedes2[mPosRobot.x][mPosRobot.y] & DIBUJAR){
+        *pColor = (mParedes2[mPosRobot.x][mPosRobot.y]& MASKCOLOR)>>4;
+        return true;
+    }
+    return false;
+}
+
+unsigned short int Mundo::Orientacion(wxPoint pDireccion){
+    if(pDireccion.y==-1){
+        return 1;
+    }else if(pDireccion.x==1){
+        return 2;
+    }else if(pDireccion.y==1){
+        return 4;
+    }
+    return 8;
+}
+
+unsigned short int Mundo::OrientacionActual(){
+    return Orientacion(mDirRobot);
+}

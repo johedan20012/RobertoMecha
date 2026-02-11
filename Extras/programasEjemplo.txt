@@ -1,0 +1,254 @@
+definir inicio como {
+    si frente-libre entonces{
+        avanzar.
+    }
+    girar.
+    si no frente-libre entonces{
+        girar.
+    }
+    avanzar.
+}
+
+main([si([['frente-libre']],[fun(avanzar)]),fun(girar),si([[no('frente-libre')]],[fun(girar)]),fun(avanzar)])
+
+main(
+    [
+        si(
+            [['frente-libre']]
+            ,[fun(avanzar)]
+          )
+        ,fun(girar),
+        si(
+            [[no('frente-libre')]]
+            ,[fun(girar)]
+        ),
+        fun(avanzar)
+    ]
+)
+
+definir avanza como{
+    avanzar.
+}
+
+definir inicio como{
+    avanzar.
+    girar.
+    avanzar.
+    avanzar.
+    avanza.
+    avanzar.
+}
+
+definir inicio como { si frente-libre entonces {botones.}sino{tones.} }
+
+definir inicio como { si frente-libre entonces {}}
+
+definir inicio como { }
+
+definir inicio como { si tones entonces{a1.}sino{si tones2 entonces {a2.} sino{a3.} } }
+
+
+definir aTope como {
+    mientras frente-libre hacer{
+        avanzar
+    }    
+}
+
+definir inicio como {
+    aTope.
+    pintar(rojo).
+    girar.
+    mientras no orientado-al-sur hacer{
+        girar.
+    }
+    aTope.
+    si parado-en-color(#FF0000) entonces{
+        pintar(verde).
+    } sino {
+        pintar(blanco).
+    }
+
+}
+
+definir aTope como{
+    mientras frente-libre hacer{
+        avanzar.
+    }
+}
+
+definir inicio como{
+    aTope.
+    girar.
+    aTope.
+    girar.
+    aTope.
+    girar.
+}
+
+analisisSintactico("",Res).
+
+
+definir inicio como{
+    si frente-libre y parado-en-color(rojo) entonces{
+        avanzar.
+    }sino{
+        girar.
+    }
+}
+
+definir inicio como {
+    mientras frente-libre y no parado-en-color(rojo) hacer{
+        avanzar.
+        pintar(azul).
+    }
+}
+
+definir inicio como{
+    repetir 5 veces {
+        avanzar.
+    }
+}
+
+definir aTope como{
+    mientras frente-libre hacer{
+        avanzar.
+    }
+}
+
+definir inicio como{
+    aTope.
+}
+
+definir aRojo como{
+    mientras frente-libre hacer{
+        avanzar.
+    }
+}
+
+definir inicio como{
+    aTope.
+}
+
+
+definir rectangulo como{
+	repetir 4 veces{
+   	    repetir 5 veces{
+		    pintar(rojo).
+		    avanzar.
+	    }
+	}
+	girar.
+	avanzar.
+}
+
+definir inicio como{
+    rectangulo.
+}
+
+definir rectangulo como{
+	repetir 4 veces{
+   	    repetir 5 veces{
+		    pintar(rojo).
+		    avanzar.
+	    }
+	    pintar(blanco).
+	    girar.
+	    avanzar.
+	}
+	
+}
+
+definir inicio como{
+    rectangulo.
+}
+
+
+definir rectangulo como{
+	repetir 4 veces{
+   	    repetir 5 veces{
+		    pintar(verde).
+		    avanzar.
+	    }
+	    pintar(negro).
+	    girar.
+	    avanzar.
+	}
+}
+
+definir girarIzq como{
+	girar.
+	girar.
+	girar.
+}
+
+definir inicio como{
+    	rectangulo.
+    	avanzar.
+	avanzar.
+   	girar.
+	avanzar.
+	avanzar.
+	girarIzq.
+	rectangulo.
+}
+
+
+definir girar2 como{
+	repetir 2 veces{
+		girar.
+	}
+}
+
+definir girar3 como{
+	repetir 3 veces{
+		girar.
+	}
+}
+
+definir busqueda como{
+	si parado-en-color(verde) entonces{
+		apagar.
+	}
+	
+	si no parado-en-color(azul) entonces{
+		pintar(azul).
+		
+		si frente-libre entonces{
+			avanzar.
+			busqueda.
+			girar2.
+			avanzar.
+			girar2.
+		}
+
+		si derecha-libre entonces{
+			girar.
+			avanzar.
+			busqueda.
+			girar2.
+			avanzar.
+			girar.
+		}
+
+		si izquierda-libre entonces{
+			girar3.
+			avanzar.
+			busqueda.
+			girar2.
+			avanzar.
+			girar3.
+		}
+
+        pintar(blanco).
+	}
+}
+
+definir inicio como{
+	busqueda.
+}
+token('', ['Caracter inesperado'], [_|A], A).
+
+(Error = [] -> 
+      write("GG")
+   ;  write("NO GG")
+   ).

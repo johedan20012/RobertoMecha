@@ -1,0 +1,5 @@
+---Formato de este codigo
+
+Nombre de funciones con mayuscula inicial
+Atributos de clases con "m" inicial
+Nombres de parametros con "p" inicial

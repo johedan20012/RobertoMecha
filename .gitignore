@@ -1,0 +1,4 @@
+.gitignore
+.vscode/settings.json
+build/debug/*
+build/release/*
